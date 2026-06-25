@@ -246,6 +246,7 @@
         amount: document.getElementById("amount").value,
         category: document.getElementById("category").value,
         notes: document.getElementById("notes").value,
+        image: currentDataUrl, // included so the slip can be added to the Google Sheet
       };
       try {
         const res = await fetch("/api/payments", {
@@ -256,8 +257,16 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Save failed");
 
-        msg.textContent = "✓ Payment saved.";
-        msg.className = "text-sm text-emerald-600";
+        if (data.sheet?.enabled && !data.sheet.synced) {
+          msg.textContent = "✓ Payment saved, but adding it to the Google Sheet failed: " + (data.sheet.error || "unknown error");
+          msg.className = "text-sm text-amber-600";
+        } else if (data.sheet?.synced) {
+          msg.textContent = "✓ Payment saved and added to the Google Sheet.";
+          msg.className = "text-sm text-emerald-600";
+        } else {
+          msg.textContent = "✓ Payment saved.";
+          msg.className = "text-sm text-emerald-600";
+        }
         msg.classList.remove("hidden");
         e.target.reset();
         document.getElementById("previewWrap").classList.add("hidden");

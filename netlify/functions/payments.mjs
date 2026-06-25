@@ -1,5 +1,5 @@
-import { insertPayment } from "../../lib/db.js";
 import { validatePayment, BadRequestError } from "../../lib/payment.js";
+import { savePayment } from "../../lib/record.js";
 import { json } from "../../lib/http.js";
 
 export default async (req) => {
@@ -7,7 +7,7 @@ export default async (req) => {
   try {
     const body = await req.json();
     const fields = validatePayment(body);
-    const row = await insertPayment(fields);
+    const row = await savePayment(fields, body.image);
     return json(row, 201);
   } catch (err) {
     if (err instanceof BadRequestError) return json({ error: err.message }, 400);

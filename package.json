@@ -12,7 +12,8 @@
     "@anthropic-ai/sdk": "^0.71.0",
     "@neondatabase/serverless": "^1.0.2",
     "dotenv": "^17.2.3",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "googleapis": "^173.0.0"
   },
   "devDependencies": {
     "netlify-cli": "^17.38.1"

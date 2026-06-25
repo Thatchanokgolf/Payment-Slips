@@ -96,6 +96,41 @@ function — no always-on server needed.
 > **Note:** the `payments` table is created automatically on the first request
 > that touches the database, so no manual migration step is required.
 
+## Google Sheets sync (optional)
+
+When configured, clicking **Save payment** also appends the slip to a Google
+Sheet — the data plus a link and a thumbnail of the image (saved to Drive). It's
+fully optional: leave the `GOOGLE_*` env vars unset and the app behaves normally.
+The Google Sheet sync is independent of the Neon database — it just adds the new
+row; it does not read the sheet's existing contents or sync the database.
+
+**Each save appends a row with these columns:**
+
+`Paid at` · `Receiver` · `Amount` · `Category #` · `Category` · `Notes` · `Slip link` · `Slip image`
+
+### One-time Google setup
+
+The target Sheet (the `ฟอร์มจ่ายเงินใหม่` tab) and the Drive image folder are
+already set in `lib/sheets.js`, so you only need to supply credentials:
+
+1. **Service account** — in [Google Cloud Console](https://console.cloud.google.com/),
+   create a project, then **APIs & Services → Enable APIs** and enable both the
+   **Google Sheets API** and **Google Drive API**.
+2. **IAM → Service Accounts → Create** a service account, then **Keys → Add key →
+   JSON**. The downloaded file has `client_email` and `private_key`.
+3. **Share both** the Sheet and the Drive image folder (Editor) with that
+   `client_email`.
+4. **Set the env vars** (see `.env.example`): `GOOGLE_SERVICE_ACCOUNT_EMAIL` and
+   `GOOGLE_PRIVATE_KEY` (one line, quoted, `\n` for newlines). On Netlify, add
+   these under Site settings → Environment variables and redeploy. The Sheet/tab/
+   folder can be overridden with `GOOGLE_SHEET_ID` / `GOOGLE_SHEET_TAB` /
+   `GOOGLE_DRIVE_FOLDER_ID` if they ever change.
+
+> **If image upload fails with a quota error:** service accounts on consumer
+> (Gmail) Drive can't always own uploaded files. Use a folder inside a Google
+> **Shared Drive** (add the service account as a member) — that avoids the
+> per-account quota limit. The row data still syncs even if the image doesn't.
+
 ## How it works
 
 1. **Upload a slip** → click **Analyze slip**. The image is sent to

@@ -4,9 +4,10 @@ import "dotenv/config";
 import express from "express";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { ensureDb, insertPayment, getSummary, CATEGORIES } from "./lib/db.js";
+import { ensureDb, getSummary, CATEGORIES } from "./lib/db.js";
 import { extractSlip, BadImageError, Anthropic } from "./lib/slip.js";
 import { validatePayment, BadRequestError } from "./lib/payment.js";
+import { savePayment } from "./lib/record.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -34,7 +35,7 @@ app.post("/api/extract", async (req, res) => {
 app.post("/api/payments", async (req, res) => {
   try {
     const fields = validatePayment(req.body);
-    const row = await insertPayment(fields);
+    const row = await savePayment(fields, req.body?.image);
     res.status(201).json(row);
   } catch (err) {
     if (err instanceof BadRequestError) return res.status(400).json({ error: err.message });
