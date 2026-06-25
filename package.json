@@ -1,0 +1,16 @@
+{
+  "name": "payment-slip-analyzer",
+  "version": "1.0.0",
+  "description": "Analyze payment slips with Claude vision and record them into a Neon Postgres database.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.0",
+    "@neondatabase/serverless": "^1.0.2",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0"
+  }
+}

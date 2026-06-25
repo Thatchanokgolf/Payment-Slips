@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payment Slip Analyzer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen">
+  <div class="max-w-6xl mx-auto px-4 py-8">
+    <header class="mb-8">
+      <h1 class="text-3xl font-bold text-slate-900">Payment Slip Analyzer</h1>
+      <p class="text-slate-500 mt-1">Upload a slip to auto-extract its details, then record it and review your spending.</p>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <!-- ============ ENTRY FORM ============ -->
+      <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+        <h2 class="text-xl font-semibold mb-4">Record a payment</h2>
+
+        <!-- Upload + analyze -->
+        <div class="mb-5">
+          <label class="block text-sm font-medium text-slate-700 mb-1">Payment slip image</label>
+          <input id="slipFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif"
+            class="block w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer" />
+          <div id="previewWrap" class="hidden mt-3">
+            <img id="preview" alt="Slip preview" class="max-h-56 rounded-lg border border-slate-200" />
+          </div>
+          <button id="analyzeBtn" type="button" disabled
+            class="mt-3 inline-flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed">
+            <span id="analyzeSpinner" class="hidden h-4 w-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
+            <span id="analyzeLabel">Analyze slip</span>
+          </button>
+          <p id="analyzeNote" class="text-xs text-slate-400 mt-2">Or just fill in the fields below manually.</p>
+        </div>
+
+        <hr class="my-5 border-slate-100" />
+
+        <!-- Fields (pre-filled by extraction, editable) -->
+        <form id="paymentForm" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Date &amp; time of payment</label>
+            <input id="paidAt" name="paid_at" type="datetime-local" required
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Receiver name</label>
+            <input id="receiver" name="receiver" type="text" required placeholder="e.g. Acme Co., Ltd."
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Amount</label>
+              <input id="amount" name="amount" type="number" step="0.01" min="0" required placeholder="0.00"
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Category</label>
+              <select id="category" name="category" required
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                <option value="" disabled selected>Select category…</option>
+              </select>
+            </div>
+          </div>
+
+          <button type="submit"
+            class="w-full bg-emerald-600 text-white px-4 py-2.5 rounded-lg font-medium hover:bg-emerald-700">
+            Save payment
+          </button>
+          <p id="formMsg" class="text-sm hidden"></p>
+        </form>
+      </section>
+
+      <!-- ============ DASHBOARD ============ -->
+      <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+        <h2 class="text-xl font-semibold mb-4">Summary</h2>
+
+        <div class="flex flex-wrap items-end gap-3 mb-5">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">From</label>
+            <input id="startDate" type="date"
+              class="rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">To</label>
+            <input id="endDate" type="date"
+              class="rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+          </div>
+          <button id="loadSummaryBtn" type="button"
+            class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700">
+            Load
+          </button>
+        </div>
+
+        <!-- Totals -->
+        <div class="grid grid-cols-2 gap-4 mb-5">
+          <div class="bg-slate-50 rounded-xl p-4">
+            <div class="text-sm text-slate-500">Total paid</div>
+            <div id="grandTotal" class="text-2xl font-bold text-slate-900 mt-1">—</div>
+          </div>
+          <div class="bg-slate-50 rounded-xl p-4">
+            <div class="text-sm text-slate-500">Payments</div>
+            <div id="totalCount" class="text-2xl font-bold text-slate-900 mt-1">—</div>
+          </div>
+        </div>
+
+        <!-- Per-category breakdown -->
+        <h3 class="text-sm font-semibold text-slate-700 mb-2">By category</h3>
+        <div id="categoryBreakdown" class="space-y-2 mb-6">
+          <p class="text-sm text-slate-400">Pick a date range and click Load.</p>
+        </div>
+
+        <!-- Recent payments -->
+        <h3 class="text-sm font-semibold text-slate-700 mb-2">Payments in range</h3>
+        <div class="overflow-x-auto max-h-72 overflow-y-auto rounded-lg border border-slate-100">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-slate-500 sticky top-0">
+              <tr>
+                <th class="text-left font-medium px-3 py-2">Date</th>
+                <th class="text-left font-medium px-3 py-2">Receiver</th>
+                <th class="text-left font-medium px-3 py-2">Category</th>
+                <th class="text-right font-medium px-3 py-2">Amount</th>
+              </tr>
+            </thead>
+            <tbody id="paymentsBody" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    let CATEGORIES = {}; // value -> name
+
+    const money = (n) =>
+      Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // ---------- Load category list into the <select> ----------
+    async function loadCategories() {
+      const res = await fetch("/api/categories");
+      const cats = await res.json();
+      const select = document.getElementById("category");
+      for (const { value, name } of cats) {
+        CATEGORIES[value] = name;
+        const opt = document.createElement("option");
+        opt.value = value;
+        opt.textContent = `${value}. ${name}`;
+        select.appendChild(opt);
+      }
+    }
+
+    // ---------- Image upload + preview ----------
+    const fileInput = document.getElementById("slipFile");
+    const analyzeBtn = document.getElementById("analyzeBtn");
+    let currentDataUrl = null;
+
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        currentDataUrl = reader.result;
+        document.getElementById("preview").src = currentDataUrl;
+        document.getElementById("previewWrap").classList.remove("hidden");
+        analyzeBtn.disabled = false;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // ---------- Analyze slip via Claude vision ----------
+    analyzeBtn.addEventListener("click", async () => {
+      if (!currentDataUrl) return;
+      setAnalyzing(true);
+      try {
+        const res = await fetch("/api/extract", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image: currentDataUrl }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Extraction failed");
+
+        if (data.paid_at) {
+          // Trim to the minute precision the datetime-local input expects.
+          document.getElementById("paidAt").value = String(data.paid_at).slice(0, 16);
+        }
+        if (data.receiver) document.getElementById("receiver").value = data.receiver;
+        if (data.amount != null) document.getElementById("amount").value = data.amount;
+
+        setNote("Fields filled from the slip — review them, pick a category, then save.", "text-emerald-600");
+      } catch (err) {
+        setNote(err.message, "text-red-600");
+      } finally {
+        setAnalyzing(false);
+      }
+    });
+
+    function setAnalyzing(on) {
+      document.getElementById("analyzeSpinner").classList.toggle("hidden", !on);
+      document.getElementById("analyzeLabel").textContent = on ? "Analyzing…" : "Analyze slip";
+      analyzeBtn.disabled = on;
+    }
+    function setNote(msg, cls) {
+      const note = document.getElementById("analyzeNote");
+      note.textContent = msg;
+      note.className = "text-xs mt-2 " + cls;
+    }
+
+    // ---------- Save payment ----------
+    document.getElementById("paymentForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById("formMsg");
+      const payload = {
+        paid_at: document.getElementById("paidAt").value,
+        receiver: document.getElementById("receiver").value,
+        amount: document.getElementById("amount").value,
+        category: document.getElementById("category").value,
+      };
+      try {
+        const res = await fetch("/api/payments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Save failed");
+
+        msg.textContent = "✓ Payment saved.";
+        msg.className = "text-sm text-emerald-600";
+        msg.classList.remove("hidden");
+        e.target.reset();
+        document.getElementById("previewWrap").classList.add("hidden");
+        currentDataUrl = null;
+        analyzeBtn.disabled = true;
+        loadSummary(); // refresh dashboard if a range is loaded
+      } catch (err) {
+        msg.textContent = err.message;
+        msg.className = "text-sm text-red-600";
+        msg.classList.remove("hidden");
+      }
+    });
+
+    // ---------- Dashboard ----------
+    async function loadSummary() {
+      const start = document.getElementById("startDate").value;
+      const end = document.getElementById("endDate").value;
+      if (!start || !end) return;
+
+      const res = await fetch(`/api/summary?start=${start}&end=${end}`);
+      const data = await res.json();
+      if (!res.ok) return;
+
+      document.getElementById("grandTotal").textContent = money(data.grandTotal);
+      document.getElementById("totalCount").textContent = data.totalCount;
+
+      // Category breakdown with proportional bars
+      const breakdown = document.getElementById("categoryBreakdown");
+      if (data.byCategory.length === 0) {
+        breakdown.innerHTML = '<p class="text-sm text-slate-400">No payments in this range.</p>';
+      } else {
+        const max = Math.max(...data.byCategory.map((c) => c.total));
+        breakdown.innerHTML = data.byCategory
+          .map((c) => {
+            const pct = max > 0 ? (c.total / max) * 100 : 0;
+            return `
+              <div>
+                <div class="flex justify-between text-sm mb-0.5">
+                  <span class="text-slate-600">${c.value}. ${c.name} <span class="text-slate-400">(${c.count})</span></span>
+                  <span class="font-medium text-slate-800">${money(c.total)}</span>
+                </div>
+                <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div class="h-full bg-indigo-500 rounded-full" style="width:${pct}%"></div>
+                </div>
+              </div>`;
+          })
+          .join("");
+      }
+
+      // Payment rows
+      const body = document.getElementById("paymentsBody");
+      body.innerHTML = data.payments
+        .map(
+          (p) => `
+          <tr>
+            <td class="px-3 py-2 text-slate-600 whitespace-nowrap">${new Date(p.paid_at).toLocaleString()}</td>
+            <td class="px-3 py-2 text-slate-800">${escapeHtml(p.receiver)}</td>
+            <td class="px-3 py-2 text-slate-500">${p.category}. ${CATEGORIES[p.category] ?? ""}</td>
+            <td class="px-3 py-2 text-right font-medium text-slate-800 whitespace-nowrap">${money(p.amount)}</td>
+          </tr>`
+        )
+        .join("");
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (c) =>
+        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
+      );
+    }
+
+    document.getElementById("loadSummaryBtn").addEventListener("click", loadSummary);
+
+    // ---------- Init ----------
+    (function init() {
+      // Default the dashboard range to the current month.
+      const now = new Date();
+      const first = new Date(now.getFullYear(), now.getMonth(), 1);
+      document.getElementById("startDate").value = first.toISOString().slice(0, 10);
+      document.getElementById("endDate").value = now.toISOString().slice(0, 10);
+      loadCategories();
+      loadSummary();
+    })();
+  </script>
+</body>
+</html>
