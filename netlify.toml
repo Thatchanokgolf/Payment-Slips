@@ -13,3 +13,11 @@
 
 [build.environment]
   NODE_VERSION = "20"
+
+# `netlify dev` (npm run dev:netlify) — runs the static site + functions locally,
+# loading env vars from .env. "#static" skips framework detection so it just
+# serves the publish directory instead of trying to launch a dev command.
+[dev]
+  framework = "#static"
+  publish = "public"
+  port = 8888

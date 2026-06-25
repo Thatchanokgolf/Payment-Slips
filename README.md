@@ -61,6 +61,19 @@ Payments are tagged with a category number from 1–10:
    The `payments` table is created automatically on first launch. Open
    <http://localhost:3000>.
 
+## Test the production build locally (`netlify dev`)
+
+To run the exact serverless setup locally — static site + functions + your
+`.env` — instead of the Express server:
+
+```bash
+npm run dev:netlify
+```
+
+This serves everything on <http://localhost:8888>, routing `/api/*` through the
+real Netlify function runtime. Useful for catching anything that behaves
+differently between Express and the functions before you push.
+
 ## Deploy to Netlify
 
 The frontend is served statically and each API route runs as a serverless
