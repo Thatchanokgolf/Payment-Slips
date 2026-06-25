@@ -104,9 +104,15 @@ fully optional: leave the `GOOGLE_*` env vars unset and the app behaves normally
 The Google Sheet sync is independent of the Neon database — it just adds the new
 row; it does not read the sheet's existing contents or sync the database.
 
-**Each save appends a row with these columns:**
+**Each save appends a row with these columns (matching the sheet header):**
 
-`Paid at` · `Receiver` · `Amount` · `Category #` · `Category` · `Notes` · `Slip link` · `Slip image`
+`Date/Time` · `Receiver` · `Amount` · `Category` · `Notes` · `Payment slip image` · `Extra image 1` · `Extra image 2`
+
+The slip image and the two optional extra images are `=IMAGE()` thumbnails of
+files uploaded to the Drive folder. Image upload requires a **Shared Drive**
+folder (a service account has no storage quota in a regular My Drive folder);
+if upload fails the row still syncs with blank image cells. The extra images are
+saved to the sheet only — never to the database.
 
 ### One-time Google setup
 

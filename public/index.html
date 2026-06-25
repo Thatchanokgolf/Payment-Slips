@@ -69,6 +69,13 @@
               class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-y"></textarea>
           </div>
 
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Additional images <span class="text-slate-400 font-normal">(optional, up to 2 — saved to the sheet only)</span></label>
+            <input id="extraFiles" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple
+              class="block w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer" />
+            <div id="extraPreviews" class="flex flex-wrap gap-2 mt-2"></div>
+          </div>
+
           <button type="submit"
             class="w-full bg-emerald-600 text-white px-4 py-2.5 rounded-lg font-medium hover:bg-emerald-700">
             Save payment
@@ -196,6 +203,31 @@
       });
     }
 
+    // ---------- Additional images (sheet only, up to 2) ----------
+    const extraFiles = document.getElementById("extraFiles");
+    let extraImages = [];
+
+    extraFiles.addEventListener("change", async () => {
+      const files = Array.from(extraFiles.files).slice(0, 2);
+      extraImages = [];
+      const wrap = document.getElementById("extraPreviews");
+      wrap.innerHTML = "";
+      for (const f of files) {
+        const url = await downscaleImage(f, 1600, 0.82);
+        extraImages.push(url);
+        const img = document.createElement("img");
+        img.src = url;
+        img.className = "max-h-24 rounded-lg border border-slate-200";
+        wrap.appendChild(img);
+      }
+    });
+
+    function resetExtraImages() {
+      extraImages = [];
+      extraFiles.value = "";
+      document.getElementById("extraPreviews").innerHTML = "";
+    }
+
     // ---------- Analyze slip via Claude vision ----------
     analyzeBtn.addEventListener("click", async () => {
       if (!currentDataUrl) return;
@@ -247,6 +279,7 @@
         category: document.getElementById("category").value,
         notes: document.getElementById("notes").value,
         image: currentDataUrl, // included so the slip can be added to the Google Sheet
+        extraImages, // up to 2 optional images, saved to the sheet only
       };
       try {
         const res = await fetch("/api/payments", {
@@ -272,6 +305,7 @@
         document.getElementById("previewWrap").classList.add("hidden");
         currentDataUrl = null;
         analyzeBtn.disabled = true;
+        resetExtraImages();
         loadSummary(); // refresh dashboard if a range is loaded
       } catch (err) {
         msg.textContent = err.message;

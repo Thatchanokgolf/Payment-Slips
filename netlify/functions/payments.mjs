@@ -7,7 +7,7 @@ export default async (req) => {
   try {
     const body = await req.json();
     const fields = validatePayment(body);
-    const row = await savePayment(fields, body.image);
+    const row = await savePayment(fields, body.image, body.extraImages);
     return json(row, 201);
   } catch (err) {
     if (err instanceof BadRequestError) return json({ error: err.message }, 400);
