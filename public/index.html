@@ -215,6 +215,7 @@
         }
         if (data.receiver) document.getElementById("receiver").value = data.receiver;
         if (data.amount != null) document.getElementById("amount").value = data.amount;
+        if (data.notes) document.getElementById("notes").value = data.notes;
 
         setNote("Fields filled from the slip — review them, pick a category, then save.", "text-emerald-600");
       } catch (err) {
