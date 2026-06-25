@@ -76,8 +76,8 @@
             <div id="extraPreviews" class="flex flex-wrap gap-2 mt-2"></div>
           </div>
 
-          <button type="submit"
-            class="w-full bg-emerald-600 text-white px-4 py-2.5 rounded-lg font-medium hover:bg-emerald-700">
+          <button type="submit" id="saveBtn"
+            class="w-full bg-emerald-600 text-white px-4 py-2.5 rounded-lg font-medium hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed">
             Save payment
           </button>
           <p id="formMsg" class="text-sm hidden"></p>
@@ -281,6 +281,9 @@
         image: currentDataUrl, // included so the slip can be added to the Google Sheet
         extraImages, // up to 2 optional images, saved to the sheet only
       };
+      const saveBtn = document.getElementById("saveBtn");
+      saveBtn.disabled = true;
+      saveBtn.textContent = "Saving…";
       try {
         const res = await fetch("/api/payments", {
           method: "POST",
@@ -311,6 +314,9 @@
         msg.textContent = err.message;
         msg.className = "text-sm text-red-600";
         msg.classList.remove("hidden");
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = "Save payment";
       }
     });
 
