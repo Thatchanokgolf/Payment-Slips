@@ -154,18 +154,40 @@
     const analyzeBtn = document.getElementById("analyzeBtn");
     let currentDataUrl = null;
 
-    fileInput.addEventListener("change", () => {
+    fileInput.addEventListener("change", async () => {
       const file = fileInput.files?.[0];
       if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        currentDataUrl = reader.result;
-        document.getElementById("preview").src = currentDataUrl;
-        document.getElementById("previewWrap").classList.remove("hidden");
-        analyzeBtn.disabled = false;
-      };
-      reader.readAsDataURL(file);
+      // Downscale before upload: keeps the request under serverless body limits
+      // and reduces vision token cost. The full slip stays readable at 1600px.
+      currentDataUrl = await downscaleImage(file, 1600, 0.82);
+      document.getElementById("preview").src = currentDataUrl;
+      document.getElementById("previewWrap").classList.remove("hidden");
+      analyzeBtn.disabled = false;
     });
+
+    // Draw the image onto a canvas no larger than maxDim on its long edge and
+    // re-encode as JPEG. Returns a data URL.
+    function downscaleImage(file, maxDim, quality) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.round(img.width * scale);
+            canvas.height = Math.round(img.height * scale);
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL("image/jpeg", quality));
+          };
+          img.onerror = reject;
+          img.src = reader.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
 
     // ---------- Analyze slip via Claude vision ----------
     analyzeBtn.addEventListener("click", async () => {

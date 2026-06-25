@@ -7,9 +7,20 @@ dashboard summarizes spending between any two dates.
 ## Stack
 
 - **Frontend** — a single `public/index.html` page styled with Tailwind (CDN)
-- **Backend** — Express server (`server.js`)
+- **Backend** — Express server (`server.js`) for local dev; Netlify serverless
+  functions (`netlify/functions/`) in production. Both share the logic in `lib/`.
 - **OCR / extraction** — Claude `claude-opus-4-8` vision with structured JSON output
 - **Database** — Neon serverless Postgres (`@neondatabase/serverless`)
+
+## Project layout
+
+```
+public/              static frontend (served as-is)
+lib/                 shared logic — db access, slip extraction, validation
+server.js            local Express dev server  → npm start
+netlify/functions/   one serverless function per API route (production)
+netlify.toml         Netlify build + functions config
+```
 
 ## Categories
 
@@ -49,6 +60,28 @@ Payments are tagged with a category number from 1–10:
 
    The `payments` table is created automatically on first launch. Open
    <http://localhost:3000>.
+
+## Deploy to Netlify
+
+The frontend is served statically and each API route runs as a serverless
+function — no always-on server needed.
+
+1. **Connect the repo** — in Netlify, "Add new site" → "Import from Git" → pick
+   this repository. `netlify.toml` already sets the publish directory (`public`)
+   and functions directory, so you can leave the build settings at their defaults
+   (no build command needed).
+
+2. **Add environment variables** — Site settings → **Environment variables** →
+   add the same two values from your `.env`:
+   - `ANTHROPIC_API_KEY`
+   - `DATABASE_URL`
+
+3. **Deploy.** Netlify builds on every push to `main`. The routes resolve as:
+   - `https://<your-site>.netlify.app/` → the form + dashboard
+   - `/api/extract`, `/api/payments`, `/api/summary`, `/api/categories` → functions
+
+> **Note:** the `payments` table is created automatically on the first request
+> that touches the database, so no manual migration step is required.
 
 ## How it works
 

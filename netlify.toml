@@ -1,0 +1,15 @@
+# Netlify deployment config.
+# - The frontend (public/) is served as a static site.
+# - Each file in netlify/functions/ becomes a serverless function; its own
+#   `export const config = { path: "/api/..." }` defines the route, so the
+#   existing /api/* fetch calls in the frontend work unchanged.
+
+[build]
+  publish = "public"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[build.environment]
+  NODE_VERSION = "20"
