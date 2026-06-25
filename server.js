@@ -72,7 +72,13 @@ app.post("/api/extract", async (req, res) => {
               text:
                 "This is a payment slip / receipt. Extract the payment date-time, " +
                 "the name of the receiver (payee), and the total amount paid. " +
-                "Return null for any field you cannot read confidently.",
+                "Return null for any field you cannot read confidently.\n\n" +
+                "Date handling: the slip may use the Thai Buddhist Era (B.E.) calendar " +
+                "and Thai month names. Convert any B.E. year to the Gregorian year by " +
+                "subtracting 543 (e.g. 2569 B.E. = 2026). Thai month abbreviations: " +
+                "ม.ค.=Jan, ก.พ.=Feb, มี.ค.=Mar, เม.ย.=Apr, พ.ค.=May, มิ.ย.=Jun, " +
+                "ก.ค.=Jul, ส.ค.=Aug, ก.ย.=Sep, ต.ค.=Oct, พ.ย.=Nov, ธ.ค.=Dec. " +
+                "Always return paid_at as a Gregorian ISO 8601 value (e.g. 2026-06-20T22:10).",
             },
           ],
         },
@@ -88,6 +94,12 @@ app.post("/api/extract", async (req, res) => {
     res.json(extracted);
   } catch (err) {
     console.error("extract error:", err);
+    // Surface the API's own message (billing, rate limit, etc.) so the user
+    // sees the real reason instead of a generic failure.
+    if (err instanceof Anthropic.APIError) {
+      const apiMessage = err.error?.error?.message || err.message;
+      return res.status(err.status || 502).json({ error: apiMessage });
+    }
     res.status(500).json({ error: "Failed to analyze the slip." });
   }
 });
