@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { ensureDb, getSummary, getPaymentImage, CATEGORIES } from "./lib/db.js";
 import { extractSlip, BadImageError, Anthropic } from "./lib/slip.js";
-import { validatePayment, BadRequestError } from "./lib/payment.js";
+import { validatePayment, BadRequestError, checkPin } from "./lib/payment.js";
 import { savePayment, updatePaymentRecord, deletePaymentRecord } from "./lib/record.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -48,6 +48,7 @@ app.post("/api/payments", async (req, res) => {
 // PUT /api/payments/:id — update a payment, syncing its Google Sheet row.
 app.put("/api/payments/:id", async (req, res) => {
   try {
+    if (!checkPin(req.get("x-edit-pin"))) return res.status(401).json({ error: "Incorrect PIN." });
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ error: "Invalid payment id." });
     const fields = validatePayment(req.body);
@@ -65,6 +66,7 @@ app.put("/api/payments/:id", async (req, res) => {
 // Google Sheet row.
 app.delete("/api/payments/:id", async (req, res) => {
   try {
+    if (!checkPin(req.get("x-edit-pin"))) return res.status(401).json({ error: "Incorrect PIN." });
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ error: "Invalid payment id." });
     const row = await deletePaymentRecord(id);

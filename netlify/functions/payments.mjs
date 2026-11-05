@@ -1,4 +1,4 @@
-import { validatePayment, BadRequestError } from "../../lib/payment.js";
+import { validatePayment, BadRequestError, checkPin } from "../../lib/payment.js";
 import { savePayment, updatePaymentRecord, deletePaymentRecord } from "../../lib/record.js";
 import { json } from "../../lib/http.js";
 
@@ -21,6 +21,7 @@ export default async (req) => {
     }
 
     if (req.method === "PUT") {
+      if (!checkPin(req.headers.get("x-edit-pin"))) return json({ error: "Incorrect PIN." }, 401);
       const id = idFromUrl(req);
       if (!Number.isInteger(id)) return json({ error: "Invalid payment id." }, 400);
       const fields = validatePayment(await req.json());
@@ -30,6 +31,7 @@ export default async (req) => {
     }
 
     if (req.method === "DELETE") {
+      if (!checkPin(req.headers.get("x-edit-pin"))) return json({ error: "Incorrect PIN." }, 401);
       const id = idFromUrl(req);
       if (!Number.isInteger(id)) return json({ error: "Invalid payment id." }, 400);
       const row = await deletePaymentRecord(id);

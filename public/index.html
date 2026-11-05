@@ -488,9 +488,11 @@
     async function deletePayment(id) {
       const p = paymentsById[id];
       const label = p ? `${p.receiver} — ${money(p.amount)}` : `#${id}`;
+      const pin = prompt("Enter PIN to delete this payment:");
+      if (pin === null) return; // cancelled
       if (!confirm(`Delete this payment (${label})?\nThis also removes its images and its Google Sheet row.`)) return;
       try {
-        const res = await fetch(`/api/payments/${id}`, { method: "DELETE" });
+        const res = await fetch(`/api/payments/${id}`, { method: "DELETE", headers: { "x-edit-pin": pin } });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Delete failed");
         loadSummary();
@@ -518,6 +520,8 @@
       const id = document.getElementById("editId").value;
       const msg = document.getElementById("editMsg");
       const saveBtn = document.getElementById("editSave");
+      const pin = prompt("Enter PIN to save changes:");
+      if (pin === null) return; // cancelled — leave the modal open
       const payload = {
         paid_at: document.getElementById("editPaidAt").value,
         receiver: document.getElementById("editReceiver").value,
@@ -530,7 +534,7 @@
       try {
         const res = await fetch(`/api/payments/${id}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "x-edit-pin": pin },
           body: JSON.stringify(payload),
         });
         const data = await res.json();
