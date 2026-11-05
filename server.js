@@ -4,7 +4,7 @@ import "dotenv/config";
 import express from "express";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { ensureDb, getSummary, CATEGORIES } from "./lib/db.js";
+import { ensureDb, getSummary, getPaymentImage, CATEGORIES } from "./lib/db.js";
 import { extractSlip, BadImageError, Anthropic } from "./lib/slip.js";
 import { validatePayment, BadRequestError } from "./lib/payment.js";
 import { savePayment } from "./lib/record.js";
@@ -35,12 +35,27 @@ app.post("/api/extract", async (req, res) => {
 app.post("/api/payments", async (req, res) => {
   try {
     const fields = validatePayment(req.body);
-    const row = await savePayment(fields, req.body?.image, req.body?.extraImages);
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const row = await savePayment(fields, req.body?.image, req.body?.extraImages, baseUrl);
     res.status(201).json(row);
   } catch (err) {
     if (err instanceof BadRequestError) return res.status(400).json({ error: err.message });
     console.error("save error:", err);
     res.status(500).json({ error: "Failed to save the payment." });
+  }
+});
+
+// GET /api/image/:id — serve a stored slip image from the database.
+app.get("/api/image/:id", async (req, res) => {
+  try {
+    const img = await getPaymentImage(Number(req.params.id));
+    if (!img) return res.status(404).json({ error: "Image not found." });
+    res.setHeader("Content-Type", img.mime_type);
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    res.send(Buffer.from(img.data, "base64"));
+  } catch (err) {
+    console.error("image error:", err);
+    res.status(500).json({ error: "Failed to load the image." });
   }
 });
 

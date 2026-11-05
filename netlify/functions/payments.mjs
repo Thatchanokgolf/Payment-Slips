@@ -7,7 +7,9 @@ export default async (req) => {
   try {
     const body = await req.json();
     const fields = validatePayment(body);
-    const row = await savePayment(fields, body.image, body.extraImages);
+    // Site origin for building /api/image/:id URLs the Sheet's =IMAGE() uses.
+    const baseUrl = process.env.URL || new URL(req.url).origin;
+    const row = await savePayment(fields, body.image, body.extraImages, baseUrl);
     return json(row, 201);
   } catch (err) {
     if (err instanceof BadRequestError) return json({ error: err.message }, 400);

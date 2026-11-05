@@ -70,7 +70,7 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Additional images <span class="text-slate-400 font-normal">(optional, up to 2 — saved to the sheet only)</span></label>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Additional images <span class="text-slate-400 font-normal">(optional, up to 2 — saved with the payment)</span></label>
             <input id="extraFiles" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple
               class="block w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer" />
             <div id="extraPreviews" class="flex flex-wrap gap-2 mt-2"></div>
@@ -129,6 +129,7 @@
           <table class="w-full text-sm">
             <thead class="bg-slate-50 text-slate-500 sticky top-0">
               <tr>
+                <th class="text-left font-medium px-3 py-2">Slip</th>
                 <th class="text-left font-medium px-3 py-2">Date</th>
                 <th class="text-left font-medium px-3 py-2">Receiver</th>
                 <th class="text-left font-medium px-3 py-2">Category</th>
@@ -362,6 +363,7 @@
         .map(
           (p) => `
           <tr>
+            <td class="px-3 py-2">${slipThumbs(p.images)}</td>
             <td class="px-3 py-2 text-slate-600 whitespace-nowrap">${new Date(p.paid_at).toLocaleString()}</td>
             <td class="px-3 py-2 text-slate-800">${escapeHtml(p.receiver)}</td>
             <td class="px-3 py-2 text-slate-500">${p.category}. ${CATEGORIES[p.category] ?? ""}</td>
@@ -370,6 +372,25 @@
           </tr>`
         )
         .join("");
+    }
+
+    // Render a payment's stored images as small clickable thumbnails. Each
+    // links to the full image served from /api/image/:id.
+    function slipThumbs(images) {
+      if (!images || images.length === 0) return '<span class="text-slate-300">—</span>';
+      return (
+        '<div class="flex gap-1">' +
+        images
+          .map(
+            (im) =>
+              `<a href="/api/image/${im.id}" target="_blank" rel="noopener">
+                 <img src="/api/image/${im.id}" alt="slip" loading="lazy"
+                   class="h-10 w-10 object-cover rounded border border-slate-200 hover:ring-2 hover:ring-indigo-400" />
+               </a>`
+          )
+          .join("") +
+        "</div>"
+      );
     }
 
     function escapeHtml(s) {
