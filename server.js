@@ -7,7 +7,7 @@ import { dirname, join } from "node:path";
 import { ensureDb, getSummary, getPaymentImage, CATEGORIES } from "./lib/db.js";
 import { extractSlip, BadImageError, Anthropic } from "./lib/slip.js";
 import { validatePayment, BadRequestError } from "./lib/payment.js";
-import { savePayment } from "./lib/record.js";
+import { savePayment, updatePaymentRecord, deletePaymentRecord } from "./lib/record.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -42,6 +42,37 @@ app.post("/api/payments", async (req, res) => {
     if (err instanceof BadRequestError) return res.status(400).json({ error: err.message });
     console.error("save error:", err);
     res.status(500).json({ error: "Failed to save the payment." });
+  }
+});
+
+// PUT /api/payments/:id — update a payment, syncing its Google Sheet row.
+app.put("/api/payments/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: "Invalid payment id." });
+    const fields = validatePayment(req.body);
+    const row = await updatePaymentRecord(id, fields);
+    if (!row) return res.status(404).json({ error: "Payment not found." });
+    res.json(row);
+  } catch (err) {
+    if (err instanceof BadRequestError) return res.status(400).json({ error: err.message });
+    console.error("update error:", err);
+    res.status(500).json({ error: "Failed to update the payment." });
+  }
+});
+
+// DELETE /api/payments/:id — delete a payment (and its images), removing its
+// Google Sheet row.
+app.delete("/api/payments/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: "Invalid payment id." });
+    const row = await deletePaymentRecord(id);
+    if (!row) return res.status(404).json({ error: "Payment not found." });
+    res.json(row);
+  } catch (err) {
+    console.error("delete error:", err);
+    res.status(500).json({ error: "Failed to delete the payment." });
   }
 });
 

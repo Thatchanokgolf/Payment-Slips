@@ -169,6 +169,8 @@ You can also skip the image and enter a payment entirely by hand.
 |--------|----------|---------|
 | `POST` | `/api/extract` | Read a slip image (`{ image: <data URL> }`) → `{ paid_at, receiver, amount }` |
 | `POST` | `/api/payments` | Save `{ paid_at, receiver, amount, category }` (+ optional `image`, `extraImages` stored in the DB) |
+| `PUT`  | `/api/payments/:id` | Update a payment's fields; syncs the matching Google Sheet row |
+| `DELETE` | `/api/payments/:id` | Delete a payment (and its images); removes the matching Google Sheet row |
 | `GET`  | `/api/image/:id` | Serve a stored slip image by id (public) |
 | `GET`  | `/api/summary?start=YYYY-MM-DD&end=YYYY-MM-DD` | Totals + breakdown + rows (each with its image ids) for the range |
 | `GET`  | `/api/categories` | The 1–10 category labels |

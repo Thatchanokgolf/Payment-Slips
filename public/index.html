@@ -135,6 +135,7 @@
                 <th class="text-left font-medium px-3 py-2">Category</th>
                 <th class="text-left font-medium px-3 py-2">Notes</th>
                 <th class="text-right font-medium px-3 py-2">Amount</th>
+                <th class="text-right font-medium px-3 py-2">Actions</th>
               </tr>
             </thead>
             <tbody id="paymentsBody" class="divide-y divide-slate-100"></tbody>
@@ -144,8 +145,53 @@
     </div>
   </div>
 
+  <!-- ============ EDIT MODAL ============ -->
+  <div id="editModal" class="hidden fixed inset-0 z-50 bg-slate-900/40 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md p-6">
+      <h2 class="text-lg font-semibold mb-4">Edit payment</h2>
+      <form id="editForm" class="space-y-4">
+        <input type="hidden" id="editId" />
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Date &amp; time of payment</label>
+          <input id="editPaidAt" type="datetime-local" required
+            class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Receiver name</label>
+          <input id="editReceiver" type="text" required
+            class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Amount</label>
+            <input id="editAmount" type="number" step="0.01" min="0" required
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Category</label>
+            <select id="editCategory" required
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"></select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Notes <span class="text-slate-400 font-normal">(optional)</span></label>
+          <textarea id="editNotes" rows="2"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-y"></textarea>
+        </div>
+        <p id="editMsg" class="text-sm hidden"></p>
+        <div class="flex justify-end gap-2 pt-1">
+          <button type="button" id="editCancel"
+            class="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100">Cancel</button>
+          <button type="submit" id="editSave"
+            class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">Save changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
     let CATEGORIES = {}; // value -> name
+    let paymentsById = {}; // id -> payment (current summary rows)
 
     const money = (n) =>
       Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -162,6 +208,7 @@
         opt.textContent = `${value}. ${name}`;
         select.appendChild(opt);
       }
+      fillEditCategories(); // keep the edit modal's category list in sync
     }
 
     // ---------- Image upload + preview ----------
@@ -357,7 +404,10 @@
           .join("");
       }
 
-      // Payment rows
+      // Payment rows — keep a lookup so the edit modal can pre-fill fields.
+      paymentsById = {};
+      for (const p of data.payments) paymentsById[p.id] = p;
+
       const body = document.getElementById("paymentsBody");
       body.innerHTML = data.payments
         .map(
@@ -369,6 +419,12 @@
             <td class="px-3 py-2 text-slate-500">${p.category}. ${CATEGORIES[p.category] ?? ""}</td>
             <td class="px-3 py-2 text-slate-500">${p.notes ? escapeHtml(p.notes) : ""}</td>
             <td class="px-3 py-2 text-right font-medium text-slate-800 whitespace-nowrap">${money(p.amount)}</td>
+            <td class="px-3 py-2 text-right whitespace-nowrap">
+              <button type="button" data-action="edit" data-id="${p.id}"
+                class="text-indigo-600 hover:text-indigo-800 font-medium mr-3">Edit</button>
+              <button type="button" data-action="delete" data-id="${p.id}"
+                class="text-red-600 hover:text-red-800 font-medium">Delete</button>
+            </td>
           </tr>`
         )
         .join("");
@@ -400,6 +456,108 @@
     }
 
     document.getElementById("loadSummaryBtn").addEventListener("click", loadSummary);
+
+    // ---------- Edit / delete payments ----------
+    // Format an ISO timestamp as the local "YYYY-MM-DDTHH:MM" a datetime-local
+    // input expects (mirrors how new payments are entered).
+    function toLocalInput(iso) {
+      const d = new Date(iso);
+      const pad = (n) => String(n).padStart(2, "0");
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    const editModal = document.getElementById("editModal");
+
+    function openEdit(id) {
+      const p = paymentsById[id];
+      if (!p) return;
+      document.getElementById("editId").value = p.id;
+      document.getElementById("editPaidAt").value = toLocalInput(p.paid_at);
+      document.getElementById("editReceiver").value = p.receiver;
+      document.getElementById("editAmount").value = p.amount;
+      document.getElementById("editCategory").value = p.category;
+      document.getElementById("editNotes").value = p.notes || "";
+      const msg = document.getElementById("editMsg");
+      msg.classList.add("hidden");
+      editModal.classList.remove("hidden");
+    }
+    function closeEdit() {
+      editModal.classList.add("hidden");
+    }
+
+    async function deletePayment(id) {
+      const p = paymentsById[id];
+      const label = p ? `${p.receiver} — ${money(p.amount)}` : `#${id}`;
+      if (!confirm(`Delete this payment (${label})?\nThis also removes its images and its Google Sheet row.`)) return;
+      try {
+        const res = await fetch(`/api/payments/${id}`, { method: "DELETE" });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Delete failed");
+        loadSummary();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    // Delegate Edit/Delete clicks from the payments table.
+    document.getElementById("paymentsBody").addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-action]");
+      if (!btn) return;
+      const id = Number(btn.dataset.id);
+      if (btn.dataset.action === "edit") openEdit(id);
+      else if (btn.dataset.action === "delete") deletePayment(id);
+    });
+
+    document.getElementById("editCancel").addEventListener("click", closeEdit);
+    editModal.addEventListener("click", (e) => {
+      if (e.target === editModal) closeEdit(); // click backdrop to dismiss
+    });
+
+    document.getElementById("editForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const id = document.getElementById("editId").value;
+      const msg = document.getElementById("editMsg");
+      const saveBtn = document.getElementById("editSave");
+      const payload = {
+        paid_at: document.getElementById("editPaidAt").value,
+        receiver: document.getElementById("editReceiver").value,
+        amount: document.getElementById("editAmount").value,
+        category: document.getElementById("editCategory").value,
+        notes: document.getElementById("editNotes").value,
+      };
+      saveBtn.disabled = true;
+      saveBtn.textContent = "Saving…";
+      try {
+        const res = await fetch(`/api/payments/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Update failed");
+        closeEdit();
+        loadSummary();
+      } catch (err) {
+        msg.textContent = err.message;
+        msg.className = "text-sm text-red-600";
+        msg.classList.remove("hidden");
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = "Save changes";
+      }
+    });
+
+    // Populate the edit modal's category <select> (same list as the main form).
+    function fillEditCategories() {
+      const sel = document.getElementById("editCategory");
+      sel.innerHTML = "";
+      for (const [value, name] of Object.entries(CATEGORIES)) {
+        const opt = document.createElement("option");
+        opt.value = value;
+        opt.textContent = `${value}. ${name}`;
+        sel.appendChild(opt);
+      }
+    }
 
     // ---------- Init ----------
     (function init() {
