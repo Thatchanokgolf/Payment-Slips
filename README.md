@@ -120,7 +120,10 @@ contents or sync the database.
 
 **Each save appends a row with these columns (matching the sheet header):**
 
-`Date/Time` · `Receiver` · `Amount` · `Category` · `Notes` · `Payment slip image` · `Extra image 1` · `Extra image 2`
+`id` · `Date/Time` · `Receiver` · `Amount` · `Category` · `Notes` · `Payment slip image` · `Extra image 1` · `Extra image 2`
+
+The `id` column holds the payment's Neon `payments.id`, linking each sheet row
+to its database row.
 
 The image cells are `=IMAGE("…/api/image/<id>")` formulas. For the sheet to
 render them, the app must be deployed at a URL Google's servers can reach — so
