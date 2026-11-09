@@ -498,6 +498,15 @@
       editModal.classList.add("hidden");
     }
 
+    // Lock/unlock the edit modal's fields (and Cancel) while its save is in
+    // flight, so nothing can change mid-save.
+    function setEditDisabled(disabled) {
+      for (const id of ["editPaidAt", "editReceiver", "editAmount", "editCategory", "editNotes", "editCancel"]) {
+        const el = document.getElementById(id);
+        if (el) el.disabled = disabled;
+      }
+    }
+
     async function deletePayment(id) {
       const p = paymentsById[id];
       const label = p ? `${p.receiver} — ${money(p.amount)}` : `#${id}`;
@@ -544,6 +553,7 @@
       };
       saveBtn.disabled = true;
       saveBtn.textContent = "Saving…";
+      setEditDisabled(true); // lock modal fields while saving
       try {
         const res = await fetch(`/api/payments/${id}`, {
           method: "PUT",
@@ -561,6 +571,7 @@
       } finally {
         saveBtn.disabled = false;
         saveBtn.textContent = "Save changes";
+        setEditDisabled(false); // unlock modal fields when the save settles
       }
     });
 
