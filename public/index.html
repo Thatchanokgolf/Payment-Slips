@@ -76,6 +76,14 @@
             <div id="extraPreviews" class="flex flex-wrap gap-2 mt-2"></div>
           </div>
 
+          <div id="senderAlert" class="hidden rounded-lg border p-3 text-sm"></div>
+          <div id="senderOverride" class="hidden">
+            <label class="flex items-center gap-2 text-sm text-red-700">
+              <input type="checkbox" id="senderOverrideChk" />
+              Save anyway — I've checked this slip is correct
+            </label>
+          </div>
+
           <button type="submit" id="saveBtn"
             class="w-full bg-emerald-600 text-white px-4 py-2.5 rounded-lg font-medium hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed">
             Save payment
@@ -192,6 +200,7 @@
   <script>
     let CATEGORIES = {}; // value -> name
     let paymentsById = {}; // id -> payment (current summary rows)
+    let senderBlocked = false; // true when a slip's sender didn't match your account
 
     const money = (n) =>
       Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -225,6 +234,7 @@
       document.getElementById("preview").src = currentDataUrl;
       document.getElementById("previewWrap").classList.remove("hidden");
       analyzeBtn.disabled = false;
+      clearSenderCheck(); // previous slip's check no longer applies
     });
 
     // Draw the image onto a canvas no larger than maxDim on its long edge and
@@ -298,10 +308,11 @@
         if (data.notes) document.getElementById("notes").value = data.notes;
 
         if (data.source === "easyslip") {
-          setNote("Fields verified from the slip — review, pick a category, then save.", "text-emerald-600");
+          setNote("✓ Checked with EasySlip (bank-verified) — review, pick a category, then save.", "text-emerald-600");
         } else {
-          setNote("Fields read by AI (not bank-verified) — double-check them, pick a category, then save.", "text-amber-600");
+          setNote("Checked with Claude AI (not bank-verified) — double-check, pick a category, then save.", "text-amber-600");
         }
+        applySenderCheck(data);
       } catch (err) {
         setNote(err.message, "text-red-600");
       } finally {
@@ -319,6 +330,52 @@
       note.textContent = msg;
       note.className = "text-xs mt-2 " + cls;
     }
+
+    // ---------- Sender check (did this slip come from your account?) ----------
+    // Show the result of the server's sender check and block saving on a mismatch
+    // (overridable). "ok" = verified; "mismatch" = different account → block;
+    // "unverified" = couldn't check (AI-read slip or no expected account set).
+    function applySenderCheck(data) {
+      const alertEl = document.getElementById("senderAlert");
+      const override = document.getElementById("senderOverride");
+      document.getElementById("senderOverrideChk").checked = false;
+
+      if (data.senderMatch === "mismatch") {
+        const s = data.sender || {};
+        const from = [s.name, s.account, s.bank].filter(Boolean).join(" · ") || "an unknown account";
+        alertEl.textContent = `⚠ Sender mismatch — this slip was sent from ${from}, not your account. Saving is blocked.`;
+        alertEl.className = "rounded-lg border border-red-300 bg-red-50 text-red-700 p-3 text-sm";
+        alertEl.classList.remove("hidden");
+        override.classList.remove("hidden");
+        senderBlocked = true;
+      } else if (data.senderMatch === "ok") {
+        alertEl.textContent = "✓ Sender verified — this slip was sent from your account.";
+        alertEl.className = "rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 p-3 text-sm";
+        alertEl.classList.remove("hidden");
+        override.classList.add("hidden");
+        senderBlocked = false;
+      } else {
+        alertEl.classList.add("hidden");
+        override.classList.add("hidden");
+        senderBlocked = false;
+      }
+      updateSaveBlocked();
+    }
+
+    function updateSaveBlocked() {
+      const chk = document.getElementById("senderOverrideChk");
+      document.getElementById("saveBtn").disabled = senderBlocked && !chk.checked;
+    }
+
+    function clearSenderCheck() {
+      document.getElementById("senderAlert").classList.add("hidden");
+      document.getElementById("senderOverride").classList.add("hidden");
+      document.getElementById("senderOverrideChk").checked = false;
+      senderBlocked = false;
+      updateSaveBlocked();
+    }
+
+    document.getElementById("senderOverrideChk").addEventListener("change", updateSaveBlocked);
 
     // Lock/unlock every entry control while a save is in flight, so no field can
     // be edited mid-save. When unlocking, analyzeBtn tracks whether an image is
@@ -373,6 +430,7 @@
         currentDataUrl = null;
         analyzeBtn.disabled = true;
         resetExtraImages();
+        clearSenderCheck();
         loadSummary(); // refresh dashboard if a range is loaded
       } catch (err) {
         msg.textContent = err.message;
