@@ -205,6 +205,15 @@
     const money = (n) =>
       Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+    // Format a stored timestamp as its literal wall-clock time (no timezone
+    // conversion). paid_at is stored as the entered wall time in UTC, so we read
+    // its UTC parts — otherwise the browser would shift it by its own offset.
+    const fmtDateTime = (iso) => {
+      const d = new Date(iso);
+      const p = (n) => String(n).padStart(2, "0");
+      return `${p(d.getUTCDate())}/${p(d.getUTCMonth() + 1)}/${d.getUTCFullYear()} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
+    };
+
     // ---------- Load category list into the <select> ----------
     async function loadCategories() {
       const res = await fetch("/api/categories");
@@ -489,7 +498,7 @@
           (p) => `
           <tr>
             <td class="px-3 py-2">${slipThumbs(p.images)}</td>
-            <td class="px-3 py-2 text-slate-600 whitespace-nowrap">${new Date(p.paid_at).toLocaleString()}</td>
+            <td class="px-3 py-2 text-slate-600 whitespace-nowrap">${fmtDateTime(p.paid_at)}</td>
             <td class="px-3 py-2 text-slate-800">${escapeHtml(p.receiver)}</td>
             <td class="px-3 py-2 text-slate-500">${p.category}. ${CATEGORIES[p.category] ?? ""}</td>
             <td class="px-3 py-2 text-slate-500">${p.notes ? escapeHtml(p.notes) : ""}</td>
@@ -533,12 +542,13 @@
     document.getElementById("loadSummaryBtn").addEventListener("click", loadSummary);
 
     // ---------- Edit / delete payments ----------
-    // Format an ISO timestamp as the local "YYYY-MM-DDTHH:MM" a datetime-local
-    // input expects (mirrors how new payments are entered).
+    // Format a stored timestamp as the "YYYY-MM-DDTHH:MM" a datetime-local input
+    // expects, using its UTC parts (no timezone conversion) so the edit form
+    // shows the same wall-clock time that was entered.
     function toLocalInput(iso) {
       const d = new Date(iso);
       const pad = (n) => String(n).padStart(2, "0");
-      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
     }
 
     const editModal = document.getElementById("editModal");
