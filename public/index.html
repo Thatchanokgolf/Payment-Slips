@@ -316,6 +316,17 @@
       note.className = "text-xs mt-2 " + cls;
     }
 
+    // Lock/unlock every entry control while a save is in flight, so no field can
+    // be edited mid-save. When unlocking, analyzeBtn tracks whether an image is
+    // currently loaded (disabled when there's none).
+    function setEntryDisabled(disabled) {
+      for (const id of ["slipFile", "paidAt", "receiver", "amount", "category", "notes", "extraFiles"]) {
+        const el = document.getElementById(id);
+        if (el) el.disabled = disabled;
+      }
+      analyzeBtn.disabled = disabled ? true : !currentDataUrl;
+    }
+
     // ---------- Save payment ----------
     document.getElementById("paymentForm").addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -332,6 +343,7 @@
       const saveBtn = document.getElementById("saveBtn");
       saveBtn.disabled = true;
       saveBtn.textContent = "Saving…";
+      setEntryDisabled(true); // lock all fields while saving
       try {
         const res = await fetch("/api/payments", {
           method: "POST",
@@ -365,6 +377,7 @@
       } finally {
         saveBtn.disabled = false;
         saveBtn.textContent = "Save payment";
+        setEntryDisabled(false); // unlock fields when the save settles
       }
     });
 
