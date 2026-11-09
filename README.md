@@ -9,7 +9,8 @@ dashboard summarizes spending between any two dates.
 - **Frontend** — a single `public/index.html` page styled with Tailwind (CDN)
 - **Backend** — Express server (`server.js`) for local dev; Netlify serverless
   functions (`netlify/functions/`) in production. Both share the logic in `lib/`.
-- **OCR / extraction** — Claude `claude-opus-4-8` vision with structured JSON output
+- **Slip extraction** — [EasySlip](https://easyslip.com/) QR verification (bank-verified
+  data) as the primary path, with Claude `claude-opus-4-8` vision as a backup
 - **Database** — Neon serverless Postgres (`@neondatabase/serverless`)
 
 ## Project layout
@@ -49,7 +50,8 @@ Payments are tagged with a category number from 1–10:
    ```
 
    Then edit `.env` and set:
-   - `ANTHROPIC_API_KEY` — from <https://console.anthropic.com/>
+   - `EASYSLIP_API_KEY` — from <https://easyslip.com/> (primary slip extraction)
+   - `ANTHROPIC_API_KEY` — from <https://console.anthropic.com/> (backup extraction)
    - `DATABASE_URL` — your Neon connection string from <https://neon.tech>
 
 3. **Run**
@@ -153,8 +155,10 @@ needed any more — images are served from the database.
 ## How it works
 
 1. **Upload a slip** → click **Analyze slip**. The image is sent to
-   `/api/extract`, which calls Claude vision and returns the fields to pre-fill
-   the form. Nothing is saved yet — you review and correct anything.
+   `/api/extract`, which verifies it with **EasySlip** (reading the slip's QR)
+   and returns the bank-verified fields to pre-fill the form. If EasySlip can't
+   verify it, the request falls back to **Claude vision** (the UI marks those
+   fields as AI-read, not verified). Nothing is saved yet — you review first.
 2. **Pick a category** (1–10) and click **Save payment** → `POST /api/payments`
    inserts the row into Neon.
 3. **Dashboard** → choose a date range and click **Load** → `GET /api/summary`
@@ -167,7 +171,7 @@ You can also skip the image and enter a payment entirely by hand.
 
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| `POST` | `/api/extract` | Read a slip image (`{ image: <data URL> }`) → `{ paid_at, receiver, amount }` |
+| `POST` | `/api/extract` | Extract a slip image (`{ image: <data URL> }`) → `{ paid_at, receiver, amount, notes, source }` (`source` is `easyslip` or `claude`) |
 | `POST` | `/api/payments` | Save `{ paid_at, receiver, amount, category }` (+ optional `image`, `extraImages` stored in the DB) |
 | `PUT`  | `/api/payments/:id` | Update a payment's fields; syncs the matching Google Sheet row |
 | `DELETE` | `/api/payments/:id` | Delete a payment (and its images); removes the matching Google Sheet row |
@@ -177,7 +181,8 @@ You can also skip the image and enter a payment entirely by hand.
 
 ## Notes
 
-- The extraction prompt instructs Claude to return `null` for any field it
-  can't read confidently, rather than guessing — so always review before saving.
+- EasySlip returns bank-verified data (exact, not guessed) but no personal
+  memo, so the notes field stays blank for you to fill. The Claude backup can
+  read a memo but is not verified — always review before saving either way.
 - The `end` date in the summary is treated as **inclusive** of the whole day.
 - Image uploads are limited to 15 MB.

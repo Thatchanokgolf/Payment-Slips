@@ -1,4 +1,4 @@
-import { extractSlip, BadImageError, Anthropic } from "../../lib/slip.js";
+import { extractSlip, BadImageError, SlipError } from "../../lib/slip.js";
 import { json } from "../../lib/http.js";
 
 export default async (req) => {

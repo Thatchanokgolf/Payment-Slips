@@ -5,7 +5,7 @@ import express from "express";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { ensureDb, getSummary, getPaymentImage, CATEGORIES } from "./lib/db.js";
-import { extractSlip, BadImageError, Anthropic } from "./lib/slip.js";
+import { extractSlip, BadImageError, SlipError } from "./lib/slip.js";
 import { validatePayment, BadRequestError, checkPin } from "./lib/payment.js";
 import { savePayment, updatePaymentRecord, deletePaymentRecord } from "./lib/record.js";
 
@@ -24,9 +24,7 @@ app.post("/api/extract", async (req, res) => {
   } catch (err) {
     console.error("extract error:", err);
     if (err instanceof BadImageError) return res.status(400).json({ error: err.message });
-    if (err instanceof Anthropic.APIError) {
-      return res.status(err.status || 502).json({ error: err.error?.error?.message || err.message });
-    }
+    if (err instanceof SlipError) return res.status(err.status || 502).json({ error: err.message });
     res.status(500).json({ error: "Failed to analyze the slip." });
   }
 });
