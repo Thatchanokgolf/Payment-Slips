@@ -316,8 +316,8 @@
         if (data.amount != null) document.getElementById("amount").value = data.amount;
         if (data.notes) document.getElementById("notes").value = data.notes;
 
-        if (data.source === "easyslip") {
-          setNote("✓ Checked with EasySlip (bank-verified) — review, pick a category, then save.", "text-emerald-600");
+        if (data.source === "iapp") {
+          setNote("Read with iApp OCR (not bank-verified) — double-check, pick a category, then save.", "text-amber-600");
         } else {
           setNote("Checked with Claude AI (not bank-verified) — double-check, pick a category, then save.", "text-amber-600");
         }

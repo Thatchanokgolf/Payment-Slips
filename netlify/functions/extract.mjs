@@ -10,10 +10,8 @@ export default async (req) => {
   } catch (err) {
     console.error("extract error:", err);
     if (err instanceof BadImageError) return json({ error: err.message }, 400);
-    // Surface the API's own message (billing, rate limit, etc.).
-    if (err instanceof Anthropic.APIError) {
-      return json({ error: err.error?.error?.message || err.message }, err.status || 502);
-    }
+    // Surface the service's own message (billing, rate limit, etc.).
+    if (err instanceof SlipError) return json({ error: err.message }, err.status || 502);
     return json({ error: "Failed to analyze the slip." }, 500);
   }
 };
